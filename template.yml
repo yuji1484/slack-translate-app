@@ -12,6 +12,7 @@ Globals:
       Variables:
         SLACK_CLIENT_ID: !Sub '${SlackClientId}'
         SLACK_CLIENT_SECRET: !Sub '${SlackClientSecret}'
+        SLACK_VERIFICATION_TOKEN: !Sub '${SlackVerificationToken}'
         USER_TOKENS_TABLE: !Ref SlackUserTokens
         KMS_KEY_ID: !Ref KmsKeyId
 Parameters:
@@ -23,6 +24,10 @@ Parameters:
     NoEcho: true
     Type: AWS::SSM::Parameter::Value<String>
     Default: SLACK_CLIENT_SECRET
+  SlackVerificationToken:
+    NoEcho: true
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: SLACK_VERIFICATION_TOKEN
   KmsKeyId:
     Type: String
     Description: KMS key ID
