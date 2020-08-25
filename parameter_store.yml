@@ -1,0 +1,15 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Setup Parameter store for slack dev
+Resources:
+  SSMParamSlackClientID:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+      Name: SLACK_CLIENT_ID
+      Type: String
+      Value: hogehoge
+  SSMParamSlackClientSecret:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+      Name: SLACK_CLIENT_SECRET
+      Type: String
+      Value: hogehoge

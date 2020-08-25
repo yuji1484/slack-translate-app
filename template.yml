@@ -1,0 +1,155 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: slack-translate-app
+Globals:
+  Function:
+    Runtime: python3.7
+    Timeout: 15
+    MemorySize: 256
+    Layers:
+      - !Ref LambdaLayer
+    Environment:
+      Variables:
+        SLACK_CLIENT_ID: !Sub '${SlackClientId}'
+        SLACK_CLIENT_SECRET: !Sub '${SlackClientSecret}'
+        USER_TOKENS_TABLE: !Ref SlackUserTokens
+        KMS_KEY_ID: !Ref KmsKeyId
+Parameters:
+  SlackClientId:
+    NoEcho: true
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: SLACK_CLIENT_ID
+  SlackClientSecret:
+    NoEcho: true
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: SLACK_CLIENT_SECRET
+  KmsKeyId:
+    Type: String
+    Description: KMS key ID
+Resources:
+  Translate:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src
+      Handler: handlers/translate.handler
+      Role: !GetAtt LambdaExecuteRole.Arn
+      Events:
+        TranslateAPI:
+          Type: Api
+          Properties:
+            Path: /translate
+            Method: post
+  Auth:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src
+      Handler: handlers/auth.handler
+      Role: !GetAtt LambdaExecuteRole.Arn
+      Events:
+        AuthAPI:
+          Type: Api
+          Properties:
+            Path: /auth
+            Method: get
+  TranslateAndPost:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src
+      Handler: handlers/translate_and_post.handler
+      Role: !GetAtt LambdaExecuteRole.Arn
+      Events:
+        TranslateAndPostAPI:
+          Type: Api
+          Properties:
+            Path: /translate_and_post
+            Method: post
+  LambdaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      Description: python modules Layer
+      ContentUri: layer
+  SlackUserTokens:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: user_id
+        Type: String
+  LambdaExecuteRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - 'lambda.amazonaws.com'
+            Action: sts:AssumeRole
+      Policies:
+        -
+          PolicyName: 'allow_dynamo_access'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              -
+                Effect: 'Allow'
+                Action:
+                  - 'dynamodb:*'
+                Resource:
+                  - !GetAtt SlackUserTokens.Arn
+        -
+          PolicyName: 'allow_cloud_watch_logs'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              -
+                Effect: 'Allow'
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: '*'
+        -
+          PolicyName: 'allow_kms'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              -
+                Effect: 'Allow'
+                Action:
+                  - 'kms:Decrypt'
+                  - 'kms:Encrypt'
+                Resource: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/${KmsKeyId}"
+        -
+          PolicyName: 'allow_translate'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              -
+                Effect: 'Allow'
+                Action:
+                  - 'translate:*'
+                  - 'comprehend:DetectDominantLanguage'
+                Resource: '*'
+  TranslateGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${Translate}
+      RetentionInDays: 14
+  AuthLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${Auth}
+      RetentionInDays: 14
+  TranslateAndPostLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${TranslateAndPost}
+      RetentionInDays: 14
+Outputs:
+  ApiGwURL:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/"
+  LambdaExecuteRoleArn:
+    Description: "Lambda Execute Role Arn"
+    Value: !GetAtt "LambdaExecuteRole.Arn"
