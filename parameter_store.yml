@@ -13,3 +13,9 @@ Resources:
       Name: SLACK_CLIENT_SECRET
       Type: String
       Value: hogehoge
+  SSMParamSlackVerificationToken:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+      Name: SLACK_VERIFICATION_TOKEN
+      Type: String
+      Value: hogehoge
